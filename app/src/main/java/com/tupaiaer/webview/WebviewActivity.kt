@@ -20,54 +20,43 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.WindowManager
 import android.view.KeyEvent.KEYCODE_HOME
-
+import kotlinx.android.synthetic.main.activity_main.*
+import android.net.http.SslCertificate.restoreState
+import android.net.http.SslCertificate.saveState
+import android.os.Handler
+import android.support.v4.os.HandlerCompat.postDelayed
 
 class WebviewActivity : AppCompatActivity() {
+
+    var doubleBackToExitPressedOnce = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_webview)
 
-        if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.HONEYCOMB) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.HONEYCOMB) {
             getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         }
 
         val url: String = intent.getStringExtra("url")
 
-        webView.getSettings().setBuiltInZoomControls(true)
         webView!!.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
                 view?.loadUrl(url)
                 return true
             }
         }
-        webView!!.loadUrl("http://" + url)
-    }
 
-    override fun onBackPressed() {
-//        AlertDialog.Builder(this)
-//            .setIcon(android.R.drawable.ic_dialog_alert)
-//            .setMessage("Yakin ingin keluar aplikasi?")
-//            .setCancelable(false)
-//            .setPositiveButton("Ya") { dialog, id -> this@WebviewActivity.finish() }
-//            .setNegativeButton("Tidak", null)
-        val builder = AlertDialog.Builder(this@WebviewActivity)
-        builder.setIcon(android.R.drawable.ic_dialog_alert)
-        builder.setTitle("Keluar Aplikasi")
-        builder.setMessage("Yakin ingin keluar aplikasi?")
-
-        // Set a positive button and its click listener on alert dialog
-        builder.setPositiveButton("Ya") { dialog, which ->
-            moveTaskToBack(true)
-            exitProcess(-1)
+        if (savedInstanceState == null) {
+            webView!!.loadUrl("http://" + url)
         }
 
-        builder.setNegativeButton("Tidak") { dialog, which ->
-            null
-        }
-
-        val dialog: AlertDialog = builder.create()
-        dialog.show()
+        webView.getSettings().setBuiltInZoomControls(true)
+        webView.getSettings().setJavaScriptEnabled(true)
+        webView.getSettings().setDomStorageEnabled(true)
+        webView.getSettings().setDatabaseEnabled(true)
+        webView.getSettings().setMinimumFontSize(1)
+        webView.getSettings().setMinimumLogicalFontSize(1)
     }
 
     override fun onPause() {
@@ -79,27 +68,32 @@ class WebviewActivity : AppCompatActivity() {
         activityManager.moveTaskToFront(taskId, 0)
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_HOME) {
-            val builder = AlertDialog.Builder(this@WebviewActivity)
-            builder.setIcon(android.R.drawable.ic_dialog_alert)
-            builder.setTitle("Keluar Aplikasi")
-            builder.setMessage("Yakin ingin keluar aplikasi?")
-
-            // Set a positive button and its click listener on alert dialog
-            builder.setPositiveButton("YES") { dialog, which ->
-                moveTaskToBack(true)
-                exitProcess(-1)
-            }
-
-            builder.setNegativeButton("No") { dialog, which ->
-                null
-            }
-
-            val dialog: AlertDialog = builder.create()
-            dialog.show()
-            return true
+    override fun onBackPressed() {
+        val webView = findViewById(R.id.webView) as WebView
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
         }
-        return super.onKeyDown(keyCode, event);
+
+        if (doubleBackToExitPressedOnce) {
+            super.onBackPressed()
+            return
+        }
+
+        this.doubleBackToExitPressedOnce = true
+        Toast.makeText(this, "Ketuk sekali lagi untuk keluar", Toast.LENGTH_SHORT).show()
+
+        Handler().postDelayed(Runnable { doubleBackToExitPressedOnce = false }, 2000)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        webView.saveState(outState)
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        webView.restoreState(savedInstanceState)
     }
 }
